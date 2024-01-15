@@ -35,8 +35,9 @@ def hello():
     return response
 
 
-# redirect
+# redirect 重定向
 @app.route('/hi')
+@app.route('/hithere')
 def hi():
     return redirect(url_for('hello'))
 
