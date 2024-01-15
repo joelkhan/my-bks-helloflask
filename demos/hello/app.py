@@ -18,6 +18,7 @@ def index():
 
 
 # bind multiple URL for one view function
+# 绑定多个URL到同一视图函数
 @app.route('/hi')
 @app.route('/hello')
 def say_hello():
@@ -25,6 +26,7 @@ def say_hello():
 
 
 # dynamic route, URL variable default
+# 使用defaults参数设置URL变量的默认值
 @app.route('/greet', defaults={'name': 'Programmer'})
 @app.route('/greet/<name>')
 def greet(name):
@@ -32,7 +34,11 @@ def greet(name):
 
 
 # custom flask cli command
+# 创建一个自定义的命令函数
 @app.cli.command()
 def hello():
-    """Just say hello."""
+    """
+    Just say hello.
+    就是打个招呼啦~
+    """
     click.echo('Hello, Human!')
