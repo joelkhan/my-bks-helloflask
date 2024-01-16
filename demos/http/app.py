@@ -6,6 +6,7 @@
     :license: MIT, see LICENSE for more details.
 """
 import os
+# 这里的导入做了兼容性处理。
 try:
     from urlparse import urlparse, urljoin
 except ImportError:
@@ -23,11 +24,13 @@ app.secret_key = os.getenv('SECRET_KEY', 'secret string')
 @app.route('/')
 @app.route('/hello')
 def hello():
+    # 先从查询参数中获取name的值，如果没有就从Cookie中寻找
     name = request.args.get('name')
     if name is None:
         name = request.cookies.get('name', 'Human')
     response = '<h1>Hello, %s!</h1>' % escape(name)  # escape name to avoid XSS
     # return different response according to the user's authentication status
+    print(len(session.keys()))
     if 'logged_in' in session:
         response += '[Authenticated]'
     else:
@@ -37,9 +40,24 @@ def hello():
 
 # redirect 重定向
 @app.route('/hi')
-@app.route('/hithere')
 def hi():
     return redirect(url_for('hello'))
+
+
+# XSS漏洞演示
+@app.route('/hithere')
+def hithere():
+    name = request.args.get('name')
+    response = '<h1>Hello, %s!</h1>' % name
+    return response
+
+
+@app.route('/hithere2')
+def hithere2():
+    name = request.args.get('name')
+    # XSS攻击防范，使用Jinja2提供的escape()函数对用户传入的数据进行转义
+    response = '<h1>Hello, %s!</h1>' % escape(name)
+    return response
 
 
 # use int URL converter
@@ -67,6 +85,11 @@ def teapot(drink):
 @app.route('/404')
 def not_found():
     abort(404)
+
+
+@app.route('/fooerr')
+def fooerr():
+    return jsonify(message='Foo Error!'), 500
 
 
 # return response with different formats
@@ -138,10 +161,12 @@ def set_cookie(name):
 @app.route('/login')
 def login():
     session['logged_in'] = True
+    session['login_name'] = 'who_knows'
     return redirect(url_for('hello'))
 
 
 # protect view
+# 模拟管理后台，只允许登录用户访问
 @app.route('/admin')
 def admin():
     if 'logged_in' not in session:
@@ -149,7 +174,7 @@ def admin():
     return 'Welcome to admin page.'
 
 
-# log out user
+# log out user 模拟退出登录
 @app.route('/logout')
 def logout():
     if 'logged_in' in session:
@@ -189,12 +214,15 @@ def load_post():
 # redirect to last page
 @app.route('/foo')
 def foo():
+    print(request.full_path)
+    print(url_for('do_something', next=request.full_path))
     return '<h1>Foo page</h1><a href="%s">Do something and redirect</a>' \
            % url_for('do_something', next=request.full_path)
 
 
 @app.route('/bar')
 def bar():
+    print(request.full_path)
     return '<h1>Bar page</h1><a href="%s">Do something and redirect</a>' \
            % url_for('do_something', next=request.full_path)
 
@@ -206,8 +234,13 @@ def do_something():
 
 
 def is_safe_url(target):
+    print("target: ", target)
+    print("host_url: ", request.host_url)
+    print("urljoin: ", urljoin(request.host_url, target))
     ref_url = urlparse(request.host_url)
+    print("ref_url: ", ref_url)
     test_url = urlparse(urljoin(request.host_url, target))
+    print("test_url: ", test_url)
     return test_url.scheme in ('http', 'https') and \
            ref_url.netloc == test_url.netloc
 
@@ -219,3 +252,4 @@ def redirect_back(default='hello', **kwargs):
         if is_safe_url(target):
             return redirect(target)
     return redirect(url_for(default, **kwargs))
+
